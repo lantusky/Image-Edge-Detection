@@ -4,7 +4,7 @@ from keras import backend as K
 from keras.layers.merge import concatenate
 from keras.initializers import glorot_normal, glorot_uniform, he_normal, he_uniform
 
-
+from my_models.ResNet import identity_block, conv_block
 
 init = he_normal(seed=1)
 
@@ -18,65 +18,63 @@ def side_out(x, factor):
     return x
 
 
-def u_net_fuse(input_shape=None):
+def u_res_side_fuse(input_shape=None):
 
     inputs = Input(shape=input_shape)       # 320, 480, 3
     # Normalization
     x = Lambda(lambda x: x / 255, name='pre-process')(inputs)
 
-    x = Conv2D(64, (5, 5), strides=(2, 2), padding='same', name='conv1')(x)
+    x = Conv2D(16, (5, 5), strides=(1, 1), padding='same', name='conv1')(x)
     x = BatchNormalization(axis=-1, name='bn_conv1')(x)
-    x = Activation('relu', name='act1')(x)  # 160, 240, 3
-
+    x = Activation('relu', name='act1')(x)  # 320, 480, 3
 
     # Block 1
-    c1 = Conv2D(16, (3, 3), activation='relu', padding='same', name='conv_1a', kernel_initializer=init)(x)
-    c1 = Conv2D(16, (3, 3), activation='relu', padding='same', name='conv_1b', kernel_initializer=init)(c1)
-    p1 = MaxPooling2D((2, 2), name='pool_1')(c1)
+    c1 = conv_block(x, 3, (8, 8, 32), stage=1, block='a', strides=(1, 1))
+    c1 = identity_block(c1, 3, (8, 8, 32), stage=1, block='b')      # 320, 480, 3
+
     # Block 2
-    c2 = Conv2D(32, (3, 3), activation='relu', padding='same', name='conv_2a', kernel_initializer=init)(p1)
-    c2 = Conv2D(32, (3, 3), activation='relu', padding='same', name='conv_2b', kernel_initializer=init)(c2)
-    p2 = MaxPooling2D((2, 2), name='pool_2')(c2)
+    c2 = conv_block(c1, 3, (16, 16, 64), stage=2, block='a', strides=(2, 2))
+    c2 = identity_block(c2, 3, (16, 16, 64), stage=2, block='b')    # 160, 240, 3
+
     # Block 3
-    c3 = Conv2D(64, (3, 3), activation='relu', padding='same', name='conv_3a', kernel_initializer=init)(p2)
-    c3 = Conv2D(64, (3, 3), activation='relu', padding='same', name='conv_3b', kernel_initializer=init)(c3)
-    p3 = MaxPooling2D((2, 2), name='pool_3')(c3)
+    c3 = conv_block(c2, 3, (32, 32, 128), stage=3, block='a', strides=(2, 2))
+    c3 = identity_block(c3, 3, (32, 32, 128), stage=3, block='b')   # 80, 120, 3
+
     # Block 4
-    c4 = Conv2D(128, (3, 3), activation='relu', padding='same', name='conv_4a', kernel_initializer=init)(p3)
-    c4 = Conv2D(128, (3, 3), activation='relu', padding='same', name='conv_4b', kernel_initializer=init)(c4)
-    p4 = MaxPooling2D((2, 2), name='pool_4')(c4)
+    c4 = conv_block(c3, 3, (64, 64, 256), stage=4, block='a', strides=(2, 2))
+    c4 = identity_block(c4, 3, (64, 64, 256), stage=4, block='b')   # 40, 60, 3
 
     # Block 5
-    c5 = Conv2D(256, (3, 3), activation='relu', padding='same', name='conv_5a', kernel_initializer=init)(p4)
-    c5 = Conv2D(256, (3, 3), activation='relu', padding='same', name='conv_5b', kernel_initializer=init)(c5)
+    c5 = conv_block(c4, 3, (128, 128, 512), stage=5, block='a', strides=(2, 2))
+    c5 = identity_block(c5, 3, (128, 128, 512), stage=5, block='b') # 20, 30, 3
     s1 = side_out(c5, 16)
 
     # Block 6
     u6 = Conv2DTranspose(128, (2, 2), strides=(2, 2), padding='same', name='upconv_6', kernel_initializer=init)(c5)
-    u6 = concatenate([u6, c4], name='concat_6')
-    c6 = Conv2D(128, (3, 3), activation='relu', padding='same', name='conv_6a', kernel_initializer=init)(u6)
-    c6 = Conv2D(128, (3, 3), activation='relu', padding='same', name='conv_6b', kernel_initializer=init)(c6)
+    u6 = concatenate([u6, c4], name='concat_6')        # 40, 60, 3
+    c6 = conv_block(u6, 3, (64, 64, 256), stage=6, block='a', strides=(1, 1))
+    c6 = identity_block(c6, 3, (64, 64, 256), stage=6, block='b')
     s2 = side_out(c6, 8)
 
     # Block 7
     u7 = Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same', name='upconv_7', kernel_initializer=init)(c6)
-    u7 = concatenate([u7, c3], name='concat_7')
-    c7 = Conv2D(64, (3, 3), activation='relu', padding='same', name='conv_7a', kernel_initializer=init)(u7)
-    c7 = Conv2D(64, (3, 3), activation='relu', padding='same', name='conv_7b', kernel_initializer=init)(c7)
+    u7 = concatenate([u7, c3], name='concat_7')        # 80, 120, 3
+    c7 = conv_block(u7, 3, (32, 32, 128), stage=7, block='a', strides=(1, 1))
+    c7 = identity_block(c7, 3, (32, 32, 128), stage=7, block='b')
     s3 = side_out(c7, 4)
 
     # Block 8
     u8 = Conv2DTranspose(32, (2, 2), strides=(2, 2), padding='same', name='upconv_8', kernel_initializer=init)(c7)
-    u8 = concatenate([u8, c2], name='concat_8')
-    c8 = Conv2D(32, (3, 3), activation='relu', padding='same', name='conv_8a', kernel_initializer=init)(u8)
-    c8 = Conv2D(32, (3, 3), activation='relu', padding='same', name='conv_8b', kernel_initializer=init)(c8)
+    u8 = concatenate([u8, c2], name='concat_8')        # 160, 240, 3
+    c8 = conv_block(u8, 3, (16, 16, 64), stage=8, block='a', strides=(1, 1))
+    c8 = identity_block(c8, 3, (16, 16, 64), stage=8, block='b')
     s4 = side_out(c8, 2)
 
     # Block 9
     u9 = Conv2DTranspose(16, (2, 2), strides=(2, 2), padding='same', name='upconv_9', kernel_initializer=init)(c8)
-    u9 = concatenate([u9, c1], name='concat_9')
-    c9 = Conv2D(16, (3, 3), activation='relu', padding='same', name='conv_9a', kernel_initializer=init)(u9)
-    c9 = Conv2D(16, (3, 3), activation='relu', padding='same', name='conv_9b', kernel_initializer=init)(c9)
+    u9 = concatenate([u9, c1], name='concat_9')        # 320, 480, 3
+    c9 = conv_block(u9, 3, (8, 8, 32), stage=9, block='a', strides=(1, 1))
+    c9 = identity_block(c9, 3, (8, 8, 32), stage=9, block='b')
     s5 = side_out(c9, 1)
 
     # fuse
