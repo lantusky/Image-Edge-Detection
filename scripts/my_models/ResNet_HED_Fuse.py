@@ -36,21 +36,38 @@ def res_hed_fuse(input_shape=None):
     # Block 2
     c2 = conv_block(c1, 3, (16, 16, 64), stage=2, block='a', strides=(2, 2))
     c2 = identity_block(c2, 3, (16, 16, 64), stage=2, block='b')    # 160, 240, 3
+<<<<<<< HEAD
+=======
+    c2 = identity_block(c2, 3, (16, 16, 64), stage=2, block='c')  # 160, 240, 3
+>>>>>>> 089e110ae08f343c40d98578382f7c07b903e9dd
     s2 = side_out(c2, 2)
 
     # Block 3
     c3 = conv_block(c2, 3, (32, 32, 128), stage=3, block='a', strides=(2, 2))
     c3 = identity_block(c3, 3, (32, 32, 128), stage=3, block='b')   # 80, 120, 3
+<<<<<<< HEAD
+=======
+    c3 = identity_block(c3, 3, (32, 32, 128), stage=3, block='c')  # 80, 120, 3
+>>>>>>> 089e110ae08f343c40d98578382f7c07b903e9dd
     s3 = side_out(c3, 4)
 
     # Block 4
     c4 = conv_block(c3, 3, (64, 64, 256), stage=4, block='a', strides=(2, 2))
     c4 = identity_block(c4, 3, (64, 64, 256), stage=4, block='b')   # 40, 60, 3
+<<<<<<< HEAD
+=======
+    c4 = identity_block(c4, 3, (64, 64, 256), stage=4, block='c')  # 40, 60, 3
+    c4 = identity_block(c4, 3, (64, 64, 256), stage=4, block='d')  # 40, 60, 3
+>>>>>>> 089e110ae08f343c40d98578382f7c07b903e9dd
     s4 = side_out(c4, 8)
 
     # Block 5
     c5 = conv_block(c4, 3, (128, 128, 512), stage=5, block='a', strides=(2, 2))
     c5 = identity_block(c5, 3, (128, 128, 512), stage=5, block='b') # 20, 30, 3
+<<<<<<< HEAD
+=======
+    c5 = identity_block(c5, 3, (128, 128, 512), stage=5, block='c')  # 20, 30, 3
+>>>>>>> 089e110ae08f343c40d98578382f7c07b903e9dd
     s5 = side_out(c5, 16)
 
     # fuse
